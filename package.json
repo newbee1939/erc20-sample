@@ -1,0 +1,26 @@
+{
+  "name": "erc20-sample",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/newbee1939/erc20-sample.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/newbee1939/erc20-sample/issues"
+  },
+  "homepage": "https://github.com/newbee1939/erc20-sample#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "commander": "^11.0.0",
+    "dotenv": "^16.3.1",
+    "hardhat": "^2.12.5"
+  }
+}
