@@ -30,7 +30,7 @@ contract ERC20 {
         return _decimals;
     }
 
-    function totalSypply() external view returns (uint256) {
+    function totalSupply() external view returns (uint256) {
         return _totalSupply;
     }
 }
