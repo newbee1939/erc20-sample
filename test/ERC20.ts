@@ -1,49 +1,79 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+
+async function deployContractFixture() {
+  // サインするアカウントを取得
+  // ethers.getSigners()は、テストや開発のために使用されるローカルイーサリアムアカウント（または署名者）を取得するためのメソッド
+  const [account0, account1, account2] = await ethers.getSigners();
+  // コントラクトファクトリを取得します。これにより、指定した名前のスマートコントラクトを作成することができる
+  const ERC20 = await ethers.getContractFactory("ERC20", account0);
+  // 1234 decimal => 1.234
+  const erc20 = await ERC20.deploy("Zenny", "ZNY", 18);
+  // スマートコントラクトのデプロイが完了するまで待つ
+  await erc20.deployed();
+  return { erc20, account0, account1, account2 };
+}
 
 describe("ERC20 contract states", () => {
   it("getters", async () => {
-    const ERC20 = await ethers.getContractFactory("ERC20");
-    // 1234 decimal => 1.234
-    const erc20 = await ERC20.deploy("Zenny", "ZNY", 18);
-    await erc20.deployed();
+    // テストフィクスチャ（テストの前提条件）を読み込む
+    const { erc20 } = await loadFixture(deployContractFixture);
 
     expect(await erc20.name()).to.equal("Zenny");
     expect(await erc20.symbol()).to.equal("ZNY");
     expect(await erc20.decimals()).to.equal(18);
     expect(await erc20.totalSupply()).to.equal(0);
   });
+});
 
-  it("owner is account0", async () => {
-    // 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
-    const [account0] = await ethers.getSigners();
-    const ERC20 = await ethers.getContractFactory("ERC20");
-    const erc20 = await ERC20.deploy("Zenny", "ZNY", 18);
-    await erc20.deployed();
+describe("ERC20 mint", function () {
+  it("mint", async () => {
+    const { erc20, account0, account1, account2 } = await loadFixture(
+      deployContractFixture
+    );
 
-    expect(account0.address).to.equal(
-      "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-    );
-    // _ownerに値がセットされる
-    expect(await erc20._owner()).to.equal(account0.address);
-    expect(await erc20._owner()).to.equal(
-      "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-    );
+    expect(await erc20.balanceOf(account0.address)).to.equal(0);
+    expect(await erc20.balanceOf(account1.address)).to.equal(0);
+    expect(await erc20.balanceOf(account2.address)).to.equal(0);
+
+    const decimals: number = await erc20.decimals();
+    // decimals=3 0.001 => 1, 0.001 * (10 ** 3)
+    const amount1: bigint = 10n * 10n ** BigInt(decimals);
+
+    const txt1 = await erc20.mint(account1.address, amount1);
+    // トランザクションが終わるのを待つ
+    const receipt1 = await txt1.wait();
+
+    expect(await erc20.balanceOf(account0.address)).to.equal(0);
+    expect(await erc20.balanceOf(account1.address)).to.equal(amount1);
+    expect(await erc20.balanceOf(account2.address)).to.equal(0);
+    expect(await erc20.totalSupply()).to.equal(amount1);
+
+    const amount2: bigint = 20n * 10n ** BigInt(decimals);
+
+    // トランザクションの送信をしただけ
+    const txt2 = await erc20.mint(account1.address, amount2);
+    // トランザクションが終わるのを待つ
+    const receipt2 = await txt1.wait();
+
+    expect(await erc20.balanceOf(account0.address)).to.equal(0);
+    expect(await erc20.balanceOf(account1.address)).to.equal(amount1 + amount2);
+    expect(await erc20.balanceOf(account2.address)).to.equal(0);
+    expect(await erc20.totalSupply()).to.equal(amount1 + amount2);
   });
 
-  it("owner is account1", async () => {
-    const [account0, account1] = await ethers.getSigners();
-    // デフォルトだとアカウント0が入るが、引数に自分で指定することも可能
-    const ERC20 = await ethers.getContractFactory("ERC20", account1);
-    const erc20 = await ERC20.deploy("Zenny", "ZNY", 18);
-    await erc20.deployed();
+  it("mint from non-owner", async () => {
+    const { erc20, account0, account1, account2 } = await loadFixture(
+      deployContractFixture
+    );
 
-    expect(account1.address).to.equal(
-      "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
-    );
-    expect(await erc20._owner()).to.equal(account1.address);
-    expect(await erc20._owner()).to.equal(
-      "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
-    );
+    const amount = 123;
+
+    // 自分のアカウントに自分でトークンを入れようとする
+    await expect(
+      erc20.connect(account1).mint(account1.address, amount)
+    ).revertedWith("only contract owner can call mint");
+    expect(await erc20.balanceOf(account1.address)).to.equal(0);
   });
 });
