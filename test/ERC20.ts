@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
-async function deployContractFixture() {
+async function deployContractsFixture() {
   // サインするアカウントを取得
   // ethers.getSigners()は、テストや開発のために使用されるローカルイーサリアムアカウント（または署名者）を取得するためのメソッド
   const [account0, account1, account2] = await ethers.getSigners();
@@ -18,7 +18,7 @@ async function deployContractFixture() {
 describe("ERC20 contract states", () => {
   it("getters", async () => {
     // テストフィクスチャ（テストの前提条件）を読み込む
-    const { erc20 } = await loadFixture(deployContractFixture);
+    const { erc20 } = await loadFixture(deployContractsFixture);
 
     expect(await erc20.name()).to.equal("Zenny");
     expect(await erc20.symbol()).to.equal("ZNY");
@@ -30,7 +30,7 @@ describe("ERC20 contract states", () => {
 describe("ERC20 mint", function () {
   it("mint", async () => {
     const { erc20, account0, account1, account2 } = await loadFixture(
-      deployContractFixture
+      deployContractsFixture
     );
 
     expect(await erc20.balanceOf(account0.address)).to.equal(0);
@@ -65,7 +65,7 @@ describe("ERC20 mint", function () {
 
   it("mint from non-owner", async () => {
     const { erc20, account0, account1, account2 } = await loadFixture(
-      deployContractFixture
+      deployContractsFixture
     );
 
     const amount = 123;
@@ -79,11 +79,67 @@ describe("ERC20 mint", function () {
 
   it("mint overflow", async () => {
     const { erc20, account0, account1, account2 } = await loadFixture(
-      deployContractFixture
+      deployContractsFixture
     );
     const uint256Max: bigint = 2n ** 256n - 1n;
 
     await erc20.mint(account1.address, uint256Max);
     await expect(erc20.mint(account1.address, 1)).to.be.revertedWithPanic(0x11);
+  });
+});
+
+describe("ERC20 burn", function () {
+  it("burn", async function () {
+    const { erc20, account0, account1, account2 } = await loadFixture(
+      deployContractsFixture
+    );
+
+    // account1に 10 Zenny をmintする
+    const decimals: number = await erc20.decimals();
+    const amount1: bigint = 10n * 10n ** BigInt(decimals);
+    const tx1 = await erc20.mint(account1.address, amount1);
+    const receipt1 = await tx1.wait();
+
+    // account1から 7 Zenny をburnする
+    const amount2: bigint = 7n * 10n ** BigInt(decimals);
+    const tx2 = await erc20.burn(account1.address, amount2);
+    const receipt2 = await tx2.wait();
+
+    // mint と burn 後の残高確認
+    expect(await erc20.balanceOf(account1.address)).to.equal(amount1 - amount2);
+    expect(await erc20.totalSupply()).to.equal(amount1 - amount2);
+  });
+
+  it("burn from non-owner", async function () {
+    const { erc20, account0, account1, account2 } = await loadFixture(
+      deployContractsFixture
+    );
+    const amount = 123;
+
+    await expect(
+      erc20.connect(account1).burn(account1.address, amount)
+    ).to.be.revertedWith("only contract owner can call burn");
+  });
+
+  it("burn from zero address", async function () {
+    const { erc20, account0, account1, account2 } = await loadFixture(
+      deployContractsFixture
+    );
+    const amount = 123;
+
+    await expect(
+      erc20.burn(ethers.constants.AddressZero, amount)
+    ).to.be.revertedWith("burn from the zero address is not allowed");
+  });
+
+  it("minus overflow", async function () {
+    const { erc20, account0, account1, account2 } = await loadFixture(
+      deployContractsFixture
+    );
+
+    // 残高を1に増やす
+    await erc20.mint(account1.address, 1);
+    // そこから残高を -2 しようとすると負の残高になって revert する
+    await expect(erc20.burn(account1.address, 2)).to.be.revertedWithPanic(0x11);
   });
 });
