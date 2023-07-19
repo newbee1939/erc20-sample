@@ -76,4 +76,14 @@ describe("ERC20 mint", function () {
     ).revertedWith("only contract owner can call mint");
     expect(await erc20.balanceOf(account1.address)).to.equal(0);
   });
+
+  it("mint overflow", async () => {
+    const { erc20, account0, account1, account2 } = await loadFixture(
+      deployContractFixture
+    );
+    const uint256Max: bigint = 2n ** 256n - 1n;
+
+    await erc20.mint(account1.address, uint256Max);
+    await expect(erc20.mint(account1.address, 1)).to.be.revertedWithPanic(0x11);
+  });
 });
