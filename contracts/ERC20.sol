@@ -4,14 +4,13 @@ pragma solidity ^0.8.17;
 // ERC20トークンのサンプルコード
 // 独自のトークン発行時にはこちらに従う
 contract ERC20 {
-    // 全てのトークンの数
-    uint256 private _totalSupply;
+    uint256 private _totalSupply; // 全てのトークンの数
     string private _name;
     string private _symbol;
     uint8 private _decimals;
     address private _owner; 
     // {"99sfs999fsfs": "233434343", "hohosj323j2o23": "3333323235"}
-    mapping(address => uint256) private _balances;
+    mapping(address => uint256) private _balances; // 各アドレスのトークンバランスを保持するマッピング
 
     // ログ
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -20,7 +19,7 @@ contract ERC20 {
         _name = name_;
         _symbol = symbol_;
         _decimals = decimals_;
-        _owner = msg.sender;
+        _owner = msg.sender; // Ethereumのスマートコントラクトにおける特殊な変数で、現在の関数を呼び出したアドレスを表す
     }
 
     // externalすると外部からも呼び出せる
@@ -49,7 +48,7 @@ contract ERC20 {
     // msg.sender = 関数を呼び出すアドレス
     function mint(address account, uint256 amount) external {
         // オーナーしか新たなトークンを発行できない
-        require(msg.sender == _owner, "only contract owner can call mint");
+        require(msg.sender == _owner, "only contract owner can call mint"); // これは、関数を呼び出したアドレス（msg.sender）がコントラクトの所有者（_owner）であることを要求しています。つまり、コントラクトの所有者でなければ、mint関数やburn関数を呼び出すことができない
         // 指定されたアカウントがゼロアドレス（つまり空のアドレス）でないことを確認
         require(account != address(0), "mint to zero address is not allowed");
         // 全体に増える
@@ -71,6 +70,7 @@ contract ERC20 {
         emit Transfer(account, address(0), amount);
     }
 
+    // トークンの送金
     function transfer(address recipient, uint amount) external returns (bool) {
         require(recipient != address(0), "transfer to the zero address is not allowed");
         address sender = msg.sender;
