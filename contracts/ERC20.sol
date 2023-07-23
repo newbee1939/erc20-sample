@@ -13,6 +13,9 @@ contract ERC20 {
     // {"99sfs999fsfs": "233434343", "hohosj323j2o23": "3333323235"}
     mapping(address => uint256) private _balances;
 
+    // ログ
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
     constructor (string memory name_, string memory symbol_, uint8 decimals_) {
         _name = name_;
         _symbol = symbol_;
@@ -53,6 +56,7 @@ contract ERC20 {
         _totalSupply = _totalSupply + amount; 
         // 指定したアカウントのbalanceも増える
         _balances[account] = _balances[account] + amount;
+        emit Transfer(address(0), account, amount);
     }
 
     // トークンの消滅
@@ -64,6 +68,17 @@ contract ERC20 {
         _balances[account] = _balances[account] - amount;
         // 全体に増える
         _totalSupply = _totalSupply - amount; 
+        emit Transfer(account, address(0), amount);
     }
-    
+
+    function transfer(address recipient, uint amount) external returns (bool) {
+        require(recipient != address(0), "transfer to the zero address is not allowed");
+        address sender = msg.sender;
+        require(_balances[sender] >= amount, "transfer cannot exceed balance");
+        _balances[sender] = _balances[sender] - amount;
+        _balances[recipient] = _balances[recipient] + amount;
+        // ログ
+        emit Transfer(sender, recipient, amount);
+        return true;
+    }
 }
