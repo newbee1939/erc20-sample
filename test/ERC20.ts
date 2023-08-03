@@ -8,11 +8,30 @@ async function deployContractsFixture() {
   const [account0, account1, account2] = await ethers.getSigners();
   // コントラクトファクトリを取得します。これにより、指定した名前のスマートコントラクトを作成することができる
   const ERC20 = await ethers.getContractFactory("ERC20", account0);
-  // 1234 decimal => 1.234
+  // 1234 decimal => 1.234 「18」は小数点以下の桁数
   const erc20 = await ERC20.deploy("Zenny", "ZNY", 18);
   // スマートコントラクトのデプロイが完了するまで待つ
   await erc20.deployed();
   return { erc20, account0, account1, account2 };
+}
+
+async function deployMintContractsFixture() {
+  // サインするアカウントを取得
+  // ethers.getSigners()は、テストや開発のために使用されるローカルイーサリアムアカウント（または署名者）を取得するためのメソッド
+  const [account0, account1, account2] = await ethers.getSigners();
+  // コントラクトファクトリを取得します。これにより、指定した名前のスマートコントラクトを作成することができる
+  const ERC20 = await ethers.getContractFactory("ERC20", account0);
+  // 1234 decimal => 1.234
+  const erc20 = await ERC20.deploy("Zenny", "ZNY", 18);
+  // スマートコントラクトのデプロイが完了するまで待つ
+  await erc20.deployed();
+
+  // Mintしたい
+  const balance1: bigint = 10n * 10n ** 18n;
+  const tx = await erc20.mint(account1.address, balance1);
+  await tx.wait();
+
+  return { erc20, account0, account1, account2, balance1 };
 }
 
 describe("ERC20 contract states", () => {
@@ -141,5 +160,64 @@ describe("ERC20 burn", function () {
     await erc20.mint(account1.address, 1);
     // そこから残高を -2 しようとすると負の残高になって revert する
     await expect(erc20.burn(account1.address, 2)).to.be.revertedWithPanic(0x11);
+  });
+});
+
+describe("ERC20 transfer", () => {
+  it("transfer and Transfer event", async () => {
+    const { erc20, account0, account1, account2, balance1 } = await loadFixture(
+      deployMintContractsFixture
+    );
+    const decimals: number = await erc20.decimals();
+    const amount: bigint = 7n * 10n ** BigInt(decimals);
+
+    await expect(erc20.connect(account1).transfer(account2.address, amount))
+      .to.emit(erc20, "Transfer")
+      .withArgs(account1.address, account2.address, amount);
+
+    // 残高確認
+    expect(await erc20.balanceOf(account1.address)).to.equal(balance1 - amount);
+    expect(await erc20.balanceOf(account2.address)).to.equal(amount);
+  });
+
+  it("transfer too much amount", async function () {
+    const { erc20, account0, account1, account2, balance1 } = await loadFixture(
+      deployMintContractsFixture
+    );
+
+    // account1 から残高以上の金額を account2 に送ることはできない
+    await expect(
+      erc20.connect(account1).transfer(account2.address, balance1 + 1n)
+    ).to.be.revertedWith("transfer cannot exceed balance");
+  });
+
+  it("transfer to zero address", async function () {
+    const { erc20, account0, account1, account2, balance1 } = await loadFixture(
+      deployMintContractsFixture
+    );
+
+    await expect(
+      erc20.connect(account1).transfer(ethers.constants.AddressZero, 1)
+    ).to.be.revertedWith("transfer to the zero address is not allowed");
+  });
+
+  it("Transfer event from mint", async function () {
+    const { erc20, account0, account1, account2 } = await loadFixture(
+      deployContractsFixture
+    );
+    const amount = 123;
+    await expect(erc20.mint(account1.address, amount))
+      .to.emit(erc20, "Transfer")
+      .withArgs(ethers.constants.AddressZero, account1.address, amount);
+  });
+
+  it("Transfer event from burn", async function () {
+    const { erc20, account0, account1, account2, balance1 } = await loadFixture(
+      deployMintContractsFixture
+    );
+    const amount = 123;
+    await expect(erc20.burn(account1.address, amount))
+      .to.emit(erc20, "Transfer")
+      .withArgs(account1.address, ethers.constants.AddressZero, amount);
   });
 });
