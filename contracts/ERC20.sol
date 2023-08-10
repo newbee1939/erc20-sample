@@ -11,10 +11,21 @@ contract ERC20 {
     address private _owner; 
     // {"99sfs999fsfs": "233434343", "hohosj323j2o23": "3333323235"}
     mapping(address => uint256) private _balances; // 各アドレスのトークンバランスを保持するマッピング
+    // _allowances[A][C] = amount; // AがCに対して支払い許可としてamountを設定
+    // C（DEXみたいなシステム側）がA（ユーザー等）に対してBに送金を許可
+    // _allowancesという名前のマッピングは、所有者のアドレス（A）と支払許可を受ける側のアドレス（C）をキーとし、その値として送金できるトークンの量（uint256）を格納します
+    // アクセス許可管理の仕組みを実装するために使用される
+    // アクセス許可を管理するための2重のマッピングで、所有者と支払い許可を受ける側のアドレスごとに支払えるトークン量を保持
+    mapping(address => mapping (address => uint256)) private _allowances; // allowance["A"]["C"] 
+    // CがAから10まで引き出し許可する
+    // CがAから10まで引き出すことができる
+    // allowance["A"]["C"] = 10
 
     // ログ
     event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
+    // コントラクトの初期化時に呼び出される
     constructor (string memory name_, string memory symbol_, uint8 decimals_) {
         _name = name_;
         _symbol = symbol_;
@@ -41,6 +52,11 @@ contract ERC20 {
 
     function balanceOf(address account) external view returns (uint256) {
         return _balances[account];
+    }
+ 
+    // ownerがAでspenerがCのイメージ　
+    function allowance(address owner, address spender) external view returns (uint256) {
+        return _allowances[owner][spender];
     }
 
     // 新しいトークンの発行
@@ -79,6 +95,41 @@ contract ERC20 {
         _balances[recipient] = _balances[recipient] + amount;
         // ログ
         emit Transfer(sender, recipient, amount);
+        return true;
+    }
+
+    // 所有者のアドレスが指定したアドレスに対して支払い許可を設定します。支払い許可の量も指定します
+    // 所有者のアドレスが指定したアドレス（spender）に対して支払い許可を設定するためのもの
+    // spender: 支払い許可を与える対象のアドレス。C
+    // amount: 許可するトークン量。
+    function approve(address spender, uint256 amount) external returns (bool) {
+        require(spender != address(0), "approve to the zero is not allowed");
+        // A
+        address owner = msg.sender;
+        // [A][C]
+        // A(トークンの所有者)がC(DEXなど)がAのトークンをamount分Bなどに移動させることを許可（Approve）する
+        _allowances[owner][spender] = amount;
+        emit Approval(owner, spender, amount);
+        return true; 
+    }
+
+    // 指定されたアドレスから別のアドレスへトークンを送金します。送金元が許可した範囲内でのみ送金が行われる
+    // transferFrom(A, B, 10)
+    // allowance["A"]["C"] = 0
+    function transferFrom(address sender, address recipient, uint amount) external returns (bool) {
+        require(recipient != address(0), "transfer to the zero address is not allowed");
+        require(_balances[sender] >= amount, "transfer cannot exceed balance");
+        _balances[sender] = _balances[sender] - amount;
+        _balances[recipient] = _balances[recipient] + amount;
+        emit Transfer(sender, recipient, amount);
+
+        // このメソッドを呼び出した人。C。DEXとか
+        address spender = msg.sender;
+        // sender(A)のトークンをspender(C)が移動できる量をチェック
+        require(_allowances[sender][spender] >= amount, "insufficient allowance");
+        _allowances[sender][spender] = _allowances[sender][spender] - amount;
+        emit Approval(sender, spender, _allowances[sender][spender]);
+
         return true;
     }
 }

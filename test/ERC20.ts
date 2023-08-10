@@ -221,3 +221,74 @@ describe("ERC20 transfer", () => {
       .withArgs(account1.address, ethers.constants.AddressZero, amount);
   });
 });
+
+describe("ERC20 approve and transferFrom", function () {
+  it("allowance and approve", async function () {
+    const { erc20, account0, account1, account2, balance1 } = await loadFixture(
+      deployMintContractsFixture
+    );
+
+    // 初期状態では allowance はゼロ
+    expect(await erc20.allowance(account1.address, account2.address)).to.equal(
+      0
+    );
+
+    const amount = 123;
+    // C(account2.address)がA(account1)のトークンをamount分送金することを許可
+    expect(await erc20.connect(account1).approve(account2.address, amount))
+      .to.emit(erc20, "Approval")
+      .withArgs(account1.address, account2.address, amount);
+
+    // approve 後の allowance の値が正しいことを確認
+    expect(await erc20.allowance(account1.address, account2.address)).to.equal(
+      amount
+    );
+  });
+
+  it("transferFrom", async function () {
+    const { erc20, account0, account1, account2, balance1 } = await loadFixture(
+      deployMintContractsFixture
+    );
+
+    // allowanceを初期残高の3倍に設定してみる
+    const allowance = 3n * balance1;
+    // account2がaccount1のトークンをallowance分送金することを許可
+    await erc20.connect(account1).approve(account2.address, allowance);
+
+    // account2 の命令により、トークンを account1 から account0 に移動する
+    expect(
+      await erc20
+        .connect(account2)
+        .transferFrom(account1.address, account0.address, balance1)
+    )
+      .to.emit(erc20, "Approval")
+      .withArgs(account1.address, account2.address, allowance - balance1)
+      .to.emit(erc20, "Transfer")
+      .withArgs(account1.address, account0.address, balance1);
+
+    // transferFrom の後の allowance と balance
+    expect(await erc20.allowance(account1.address, account2.address)).to.equal(
+      allowance - balance1
+    );
+    expect(await erc20.balanceOf(account0.address)).to.equal(balance1);
+    expect(await erc20.balanceOf(account1.address)).to.equal(0);
+    expect(await erc20.balanceOf(account2.address)).to.equal(0);
+  });
+
+  it("transferFrom insufficient allowance", async function () {
+    const { erc20, account0, account1, account2, balance1 } = await loadFixture(
+      deployMintContractsFixture
+    );
+
+    // allowance の値を非常に小さく設定
+    // account2がaccount1のトークンを1だけ送金することを許可
+    await erc20.connect(account1).approve(account2.address, 1);
+
+    // account1には十分な残高があるが、allowance(許可した量)が不足しているため送金できない
+    await expect(
+      erc20
+        .connect(account2)
+        .transferFrom(account1.address, account0.address, balance1)
+    ).to.be.revertedWith("insufficient allowance");
+  });
+});
