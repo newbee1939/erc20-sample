@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
+import './interfaces/IERC20.sol';
+
 // ERC20トークンのサンプルコード
 // 独自のトークン発行時にはこちらに従う
-contract ERC20 {
+contract ERC20 is IERC20 {
     uint256 private _totalSupply; // 全てのトークンの数
     string private _name;
     string private _symbol;
@@ -20,10 +22,6 @@ contract ERC20 {
     // CがAから10まで引き出し許可する
     // CがAから10まで引き出すことができる
     // allowance["A"]["C"] = 10
-
-    // ログ
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed owner, address indexed spender, uint256 value);
 
     // コントラクトの初期化時に呼び出される
     constructor (string memory name_, string memory symbol_, uint8 decimals_) {
