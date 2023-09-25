@@ -1,0 +1,56 @@
+import { ethers } from "ethers";
+import erc20Artifact from "../artifacts/contracts/ERC20.sol/ERC20.json";
+import { program, Option } from "commander";
+import * as dotenv from "dotenv";
+dotenv.config();
+
+async function main(
+  network: string,
+  contractAddress: string,
+  accountAddress: string,
+  amount: number
+) {
+  //
+}
+
+program
+  .addOption(
+    new Option(
+      "--network <string>",
+      "name of blockchain network (e.g. polygon, sepolia)"
+    )
+      .choices(["polygon", "sepolia"])
+      .makeOptionMandatory()
+  )
+  .addOption(
+    new Option(
+      "--contractAddress <address>",
+      "address of token contract"
+    ).makeOptionMandatory()
+  )
+  .addOption(
+    new Option(
+      "--accountAddress <address>",
+      "mint token to this account address"
+    ).makeOptionMandatory()
+  )
+  .addOption(
+    new Option("--amount <number>", "amount of token minted (ex. 1.23)")
+      .argParser(parseFloat)
+      .makeOptionMandatory()
+  )
+  .parse();
+
+const options = program.opts();
+
+main(
+  options.network,
+  options.contractAddress,
+  options.accountAddress,
+  options.amount
+).catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+
+// npx ts-node scripts/mint.ts --network sepolia --contractAddress 0xbd953fc91c02aacbd5bc9f57264764ad4c8a8d37 --accountAddress 0x9Cc14C10e924B1Be0bc68bf54efc1E0B5FBC3d80 --amount 1.23
