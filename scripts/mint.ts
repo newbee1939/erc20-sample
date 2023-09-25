@@ -4,13 +4,34 @@ import { program, Option } from "commander";
 import * as dotenv from "dotenv";
 dotenv.config();
 
+function getRpcUrl(network: string): string {
+  if (network === "polygon") {
+    return process.env.POLYGON_URL ?? "";
+  } else if (network === "sepolia") {
+    return process.env.SEPOLIA_URL ?? "";
+  } else {
+    return "";
+  }
+}
+
 async function main(
   network: string,
   contractAddress: string,
   accountAddress: string,
   amount: number
 ) {
-  //
+  const privateKey: string = process.env.PRIVATE_KEY ?? "";
+  if (privateKey === "") {
+    throw new Error("No Value Set for environment variable PRIVATE_KEY");
+  }
+
+  // Ethereumネットワークへの接続点(Sepolia)
+  const rpcUrl: string = getRpcUrl(network);
+  if (rpcUrl === "") {
+    throw new Error("No Value Set for environment variable SEPOLIA_URL");
+  }
+
+  // mintしていく
 }
 
 program
