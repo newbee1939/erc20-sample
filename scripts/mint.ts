@@ -14,6 +14,16 @@ function getRpcUrl(network: string): string {
   }
 }
 
+function transactionExplorerUrl(network: string, txHash: string): string {
+  if (network === "polygon") {
+    return `https://polygonscan.com/tx/${txHash}`;
+  } else if (network === "sepolia") {
+    return `https://sepolia.etherscan.io/tx/${txHash}`;
+  } else {
+    return "";
+  }
+}
+
 async function main(
   network: string,
   contractAddress: string,
@@ -32,6 +42,28 @@ async function main(
   }
 
   // mintしていく
+  const provider = new ethers.providers.JsonRpcBatchProvider(rpcUrl);
+  const signer = new ethers.Wallet(privateKey, provider); // metamaskのwalletみたいなイメージ
+
+  const contract = new ethers.Contract(
+    contractAddress,
+    erc20Artifact.abi,
+    signer
+  );
+  const decimals: number = await contract.decimals();
+  const rawAmount: bigint = BigInt(Math.floor(amount * 10 ** decimals));
+  const tx = await contract.mint(accountAddress, rawAmount);
+
+  console.log(`Tansaction URL: ${transactionExplorerUrl(network, tx.hash)}`);
+
+  const receipt = await tx.wait();
+  console.log("completed");
+  for (let log of receipt.logs) {
+    try {
+      const event = contract.interface.parseLog(log);
+      console.log(`Event Name: ${event["name"]}`);
+      console.log(`Args: ${event["args"]}`);
+    } catch (e) {}
 }
 
 program
