@@ -64,6 +64,7 @@ async function main(
       console.log(`Event Name: ${event["name"]}`);
       console.log(`Args: ${event["args"]}`);
     } catch (e) {}
+  }
 }
 
 program
