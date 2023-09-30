@@ -16,7 +16,7 @@ npx hardhat run scripts/deploy.ts
 
 https://www.udemy.com/course/web3dapps/learn/lecture/36416920#overview
 
-次は、「ERC20 コントラクトのデプロイ」の 14:00~進める。
+次は、「<補講> 深堀り講義 (3/5) State Variables の Storage 上での配置」
 metamask のパスワードは？
 
 # memo
